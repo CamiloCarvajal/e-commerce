@@ -10,9 +10,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderDetail {
+public class PurchaseDetail {
 
-    private Order order;
+    private Purchase purchase;
     private Product product;
     private double cost;
     private int items;

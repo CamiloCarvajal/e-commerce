@@ -12,13 +12,15 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Order {
+public class Purchase {
 
     private int id;
     private String status;
     private LocalDateTime date;
     private double total_cost;
     private int total_items;
-    private List<OrderDetail> orderDetails;
+    private User user;
+    private Payment payment;
+    private List<PurchaseDetail> purchaseDetails;
 
 }
