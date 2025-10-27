@@ -1,11 +1,19 @@
 package com.camilo.ecommerce.infraestructure.driven_adapters.jpa.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
 //User is a reserved word
 @Entity(name = "e_user")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserEntity {
 
     @Id
@@ -17,9 +25,10 @@ public class UserEntity {
     private String city;
     private String country;
     private String phone;
+    private String password;
     @ManyToOne
     private RoleEntity role;
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<PurchaseEntity> purchases;
 
 }

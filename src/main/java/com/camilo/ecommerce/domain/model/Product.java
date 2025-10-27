@@ -17,6 +17,6 @@ public abstract class Product {
     private String name;
     private int number_pages;
     private double cost;
-    private List<OrderDetail> orderDetails;
+    private List<PurchaseDetail> purchaseDetails;
 
 }

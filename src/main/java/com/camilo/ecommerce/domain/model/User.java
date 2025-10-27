@@ -20,7 +20,8 @@ public class User {
     private String city;
     private String country;
     private String phone;
+    private String password;
     private Role role;
-    private List<Order> orders;
+    private List<Purchase> purchases;
 
 }
