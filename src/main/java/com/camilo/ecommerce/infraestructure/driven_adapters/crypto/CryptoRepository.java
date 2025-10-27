@@ -12,6 +12,7 @@ import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.keygen.KeyGenerators;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 
+@Component
 public class CryptoRepository implements Crypto {
 
     // Always return the same encrypt for a text (A hash)
