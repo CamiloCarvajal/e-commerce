@@ -2,13 +2,10 @@ package com.camilo.ecommerce.application.usecase;
 
 import com.camilo.ecommerce.domain.model.*;
 import com.camilo.ecommerce.domain.repository.*;
-import com.camilo.ecommerce.infraestructure.entry_points.dto.ProductResponseDTO;
-import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseDetailRequestDTO;
-import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseDetailResponseDTO;
-import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseRequestDTO;
-import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseResponseDTO;
+import com.camilo.ecommerce.infraestructure.entry_points.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,6 +28,9 @@ public class PurchaseUseCase {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @Autowired
+    private PurchaseDetailRepository purchaseDetailRepository;
+
     public List<PurchaseResponseDTO> getAllPurchases() {
         List<Purchase> purchases = purchaseRepository.findAll();
         return purchases.stream()
@@ -42,9 +42,10 @@ public class PurchaseUseCase {
         return purchaseRepository.findById(id).map(this::convertToResponseDTO);
     }
 
+    @Transactional
     public PurchaseResponseDTO createPurchase(PurchaseRequestDTO requestDTO) {
         Purchase purchase = new Purchase();
-        purchase.setStatus(requestDTO.getStatus());
+        purchase.setStatus("PENDING");
         purchase.setDate(LocalDateTime.now());
         
         // Set user
@@ -57,8 +58,11 @@ public class PurchaseUseCase {
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
         purchase.setPayment(payment);
         
-        // Set purchase details with cost calculation
+        // Create purchase details and calculate totals (business logic in domain layer)
         List<PurchaseDetail> details = new ArrayList<>();
+        double totalCost = 0;
+        int totalItems = 0;
+        
         for (PurchaseDetailRequestDTO detailDTO : requestDTO.getPurchaseDetails()) {
             Product product = productRepository.findById(detailDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -66,18 +70,39 @@ public class PurchaseUseCase {
             PurchaseDetail detail = new PurchaseDetail();
             detail.setProduct(product);
             detail.setItems(detailDTO.getItems());
-            detail.setCost(product.getCost());
+            detail.setCost(product.getCost() * detailDTO.getItems());
             detail.setPurchase(purchase);
             
             details.add(detail);
+            
+            // Calculate totals
+            totalCost += product.getCost() * detailDTO.getItems();
+            totalItems += detailDTO.getItems();
         }
+        
+        // Set calculated totals
+        purchase.setTotal_cost(totalCost);
+        purchase.setTotal_items(totalItems);
         purchase.setPurchaseDetails(details);
 
+        // Step 1: Save Purchase first (without details to get ID)
         Purchase saved = purchaseRepository.save(purchase);
-        return convertToResponseDTO(saved);
+        
+        // Step 2: Save PurchaseDetails separately after Purchase has an ID
+        for (PurchaseDetail detail : details) {
+            detail.setPurchase(saved); // Set the saved purchase with ID
+            purchaseDetailRepository.save(detail);
+        }
+
+        // Step 3: Load Purchase with details for response
+        Purchase finalPurchase = purchaseRepository.findById(saved.getId())
+                .orElse(saved);
+        finalPurchase.setPurchaseDetails(details); // Ensure details are in response
+
+        return convertToResponseDTO(finalPurchase);
     }
 
-    public Optional<PurchaseResponseDTO> updatePurchase(Integer id, PurchaseRequestDTO requestDTO) {
+    public Optional<PurchaseResponseDTO> updatePurchase(Integer id, PurchaseUpdateRequestDTO requestDTO) {
         return purchaseRepository.findById(id).map(existingPurchase -> {
             if (requestDTO.getStatus() != null) {
                 existingPurchase.setStatus(requestDTO.getStatus());

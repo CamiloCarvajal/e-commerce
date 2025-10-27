@@ -1,6 +1,7 @@
 package com.camilo.ecommerce.infraestructure.driven_adapters.jpa.adapter;
 
 import com.camilo.ecommerce.domain.model.Purchase;
+import com.camilo.ecommerce.domain.model.PurchaseDetail;
 import com.camilo.ecommerce.domain.repository.PurchaseRepository;
 import com.camilo.ecommerce.infraestructure.driven_adapters.jpa.entity.PurchaseEntity;
 import com.camilo.ecommerce.infraestructure.driven_adapters.jpa.repository.PurchaseRepositoryJPA;
@@ -34,22 +35,17 @@ public class PurchaseRepositoryAdapter implements PurchaseRepository {
 
     @Override
     public Purchase save(Purchase purchase) {
-        // Calculate total automatically
-        double totalCost = 0;
-        int totalItems = 0;
-        
-        if (purchase.getPurchaseDetails() != null) {
-            for (var detail : purchase.getPurchaseDetails()) {
-                totalCost += detail.getCost() * detail.getItems();
-                totalItems += detail.getItems();
-            }
-        }
-        
-        purchase.setTotal_cost(totalCost);
-        purchase.setTotal_items(totalItems);
+        // Don't include purchase details when saving Purchase
+        // Details will be saved separately after Purchase is persisted
+        List<PurchaseDetail> tempDetails = purchase.getPurchaseDetails();
+        purchase.setPurchaseDetails(null);
         
         PurchaseEntity entity = purchaseMapper.toEntity(purchase);
         PurchaseEntity saved = purchaseRepositoryJPA.save(entity);
+        
+        // Restore details for the returned domain object
+        purchase.setPurchaseDetails(tempDetails);
+        
         return purchaseMapper.toDomain(saved);
     }
 

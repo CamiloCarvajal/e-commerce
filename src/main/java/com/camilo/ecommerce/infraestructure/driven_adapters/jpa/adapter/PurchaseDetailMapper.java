@@ -19,9 +19,12 @@ public class PurchaseDetailMapper {
         
         PurchaseDetailId id = new PurchaseDetailId();
         if (purchaseDetail.getProduct() != null) {
+            System.out.println(">>getProduct " + purchaseDetail.getProduct().getId());
             id.setProductId(purchaseDetail.getProduct().getId());
         }
+
         if (purchaseDetail.getPurchase() != null) {
+            System.out.println(">>getPurchase " + purchaseDetail.getPurchase().getId());
             id.setPurchaseId(purchaseDetail.getPurchase().getId());
         }
         

@@ -1,8 +1,10 @@
 package com.camilo.ecommerce.infraestructure.entry_points.rest;
 
 import com.camilo.ecommerce.application.usecase.PurchaseUseCase;
+import com.camilo.ecommerce.infraestructure.driven_adapters.security.SecurityUtils;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseRequestDTO;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseResponseDTO;
+import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseUpdateRequestDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,7 @@ public class PurchaseController {
             PurchaseResponseDTO created = purchaseUseCase.createPurchase(requestDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -45,32 +48,37 @@ public class PurchaseController {
     @PutMapping("/{id}")
     public ResponseEntity<PurchaseResponseDTO> updatePurchase(
             @PathVariable Integer id,
-            @Valid @RequestBody PurchaseRequestDTO requestDTO) {
+            @Valid @RequestBody PurchaseUpdateRequestDTO requestDTO) {
         Optional<PurchaseResponseDTO> updated = purchaseUseCase.updatePurchase(id, requestDTO);
         return updated.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePurchase(@PathVariable Integer id) {
-        if (purchaseUseCase.purchaseExists(id)) {
-            purchaseUseCase.deletePurchase(id);
-            return ResponseEntity.noContent().build();
+    @GetMapping("/user/me")
+    public ResponseEntity<List<PurchaseResponseDTO>> getPurchasesByUser(@PathVariable(required = false) String email) {
+        // Get email from JWT token
+        String userEmail = SecurityUtils.getCurrentUserEmail();
+        
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.notFound().build();
-    }
-
-    @GetMapping("/user/{email}")
-    public ResponseEntity<List<PurchaseResponseDTO>> getPurchasesByUser(@PathVariable String email) {
-        List<PurchaseResponseDTO> purchases = purchaseUseCase.getPurchasesByUserEmail(email);
+        
+        List<PurchaseResponseDTO> purchases = purchaseUseCase.getPurchasesByUserEmail(userEmail);
         return ResponseEntity.ok(purchases);
     }
 
-    @GetMapping("/user/{email}/status/{status}")
+    @GetMapping("/user/me/status/{status}")
     public ResponseEntity<List<PurchaseResponseDTO>> getPurchasesByUserAndStatus(
-            @PathVariable String email,
+            @PathVariable(required = false) String email,
             @PathVariable String status) {
-        List<PurchaseResponseDTO> purchases = purchaseUseCase.getPurchasesByUserEmailAndStatus(email, status);
+        // Get email from JWT token
+        String userEmail = SecurityUtils.getCurrentUserEmail();
+        
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        List<PurchaseResponseDTO> purchases = purchaseUseCase.getPurchasesByUserEmailAndStatus(userEmail, status);
         return ResponseEntity.ok(purchases);
     }
 }
