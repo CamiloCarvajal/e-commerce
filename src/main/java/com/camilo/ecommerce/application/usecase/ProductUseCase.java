@@ -3,6 +3,7 @@ package com.camilo.ecommerce.application.usecase;
 import com.camilo.ecommerce.domain.model.Book;
 import com.camilo.ecommerce.domain.model.Notebook;
 import com.camilo.ecommerce.domain.model.Product;
+import com.camilo.ecommerce.domain.model.ProductFilter;
 import com.camilo.ecommerce.domain.repository.ProductRepository;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.ProductFilterDTO;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.ProductRequestDTO;
@@ -10,7 +11,6 @@ import com.camilo.ecommerce.infraestructure.entry_points.dto.ProductResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -21,45 +21,52 @@ public class ProductUseCase {
     @Autowired
     private ProductRepository productRepository;
 
-    public List<ProductResponseDTO> getAllProducts(ProductFilterDTO filter) {
-        List<Product> products = productRepository.findAll();
+    public List<ProductResponseDTO> getAllProducts(ProductFilterDTO filterDTO) {
+        List<Product> products;
         
-        // Apply filters
-        if (filter != null) {
-            products = products.stream()
-                    .filter(p -> filter.getName() == null || p.getName().toLowerCase().contains(filter.getName().toLowerCase()))
-                    .filter(p -> filter.getMinPages() == null || p.getNumber_pages() >= filter.getMinPages())
-                    .filter(p -> filter.getMaxPages() == null || p.getNumber_pages() <= filter.getMaxPages())
-                    .filter(p -> filter.getMinCost() == null || p.getCost() >= filter.getMinCost())
-                    .filter(p -> filter.getMaxCost() == null || p.getCost() <= filter.getMaxCost())
-                    .filter(p -> filter.getAuthor() == null || (p instanceof Book && ((Book) p).getAuthor().toLowerCase().contains(filter.getAuthor().toLowerCase())))
-                    .filter(p -> filter.getLineType() == null || (p instanceof Notebook && ((Notebook) p).getLineType().toLowerCase().contains(filter.getLineType().toLowerCase())))
-                    .collect(Collectors.toList());
-            
-            // Apply sorting
-            if (filter.getSortBy() != null) {
-                Comparator<Product> comparator = null;
-                
-                if (filter.getSortBy().equalsIgnoreCase("cost")) {
-                    comparator = Comparator.comparing(Product::getCost);
-                } else if (filter.getSortBy().equalsIgnoreCase("name")) {
-                    comparator = Comparator.comparing(Product::getName);
-                }
-                
-                if (comparator != null) {
-                    if ("desc".equalsIgnoreCase(filter.getSortOrder())) {
-                        comparator = comparator.reversed();
-                    }
-                    products = products.stream()
-                            .sorted(comparator)
-                            .collect(Collectors.toList());
-                }
-            }
+        // Convert DTO to domain model
+        ProductFilter filter = convertDTOToDomainFilter(filterDTO);
+        
+        // Use JPQL query if filters are provided
+        if (filter != null && hasAnyFilter(filter)) {
+            products = productRepository.findWithFilters(filter);
+        } else {
+            // No filters, get all products
+            products = productRepository.findAll();
         }
         
         return products.stream()
                 .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());
+    }
+    
+    private ProductFilter convertDTOToDomainFilter(ProductFilterDTO filterDTO) {
+        if (filterDTO == null) return null;
+        
+        ProductFilter filter = new ProductFilter();
+        filter.setName(filterDTO.getName());
+        filter.setMinPages(filterDTO.getMinPages());
+        filter.setMaxPages(filterDTO.getMaxPages());
+        filter.setMinCost(filterDTO.getMinCost());
+        filter.setMaxCost(filterDTO.getMaxCost());
+        filter.setAuthor(filterDTO.getAuthor());
+        filter.setLineType(filterDTO.getLineType());
+        filter.setSortBy(filterDTO.getSortBy());
+        filter.setSortOrder(filterDTO.getSortOrder());
+        
+        return filter;
+    }
+    
+    private boolean hasAnyFilter(ProductFilter filter) {
+        if (filter == null) return false;
+        
+        return (filter.getName() != null && !filter.getName().isEmpty()) ||
+               filter.getMinPages() != null ||
+               filter.getMaxPages() != null ||
+               filter.getMinCost() != null ||
+               filter.getMaxCost() != null ||
+               (filter.getAuthor() != null && !filter.getAuthor().isEmpty()) ||
+               (filter.getLineType() != null && !filter.getLineType().isEmpty());
     }
 
     public Optional<ProductResponseDTO> getProductById(Integer id) {

@@ -2,6 +2,7 @@ package com.camilo.ecommerce.infraestructure.entry_points.rest;
 
 import com.camilo.ecommerce.application.usecase.PurchaseUseCase;
 import com.camilo.ecommerce.application.usecase.UserUseCase;
+import com.camilo.ecommerce.infraestructure.driven_adapters.security.SecurityUtils;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.PurchaseResponseDTO;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.UserRequestDTO;
 import com.camilo.ecommerce.infraestructure.entry_points.dto.UserResponseDTO;
@@ -31,8 +32,15 @@ public class UserController {
     }
 
     @GetMapping("/{email}")
-    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable String email) {
-        Optional<UserResponseDTO> user = userUseCase.getUserById(email);
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable(required = false) String email) {
+        // Get email from JWT token if not provided or get current user
+        String userEmail = email != null ? email : SecurityUtils.getCurrentUserEmail();
+        
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        Optional<UserResponseDTO> user = userUseCase.getUserById(userEmail);
         return user.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -66,11 +74,18 @@ public class UserController {
     }
 
     @GetMapping("/{email}/info")
-    public ResponseEntity<UserResponseDTO> getUserInfoWithPurchases(@PathVariable String email) {
-        Optional<UserResponseDTO> user = userUseCase.getUserById(email);
+    public ResponseEntity<UserResponseDTO> getUserInfoWithPurchases(@PathVariable(required = false) String email) {
+        // Get email from JWT token if not provided
+        String userEmail = email != null ? email : SecurityUtils.getCurrentUserEmail();
+        
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        Optional<UserResponseDTO> user = userUseCase.getUserById(userEmail);
         if (user.isPresent()) {
             UserResponseDTO userDTO = user.get();
-            List<PurchaseResponseDTO> purchases = purchaseUseCase.getPurchasesByUserEmail(email);
+            List<PurchaseResponseDTO> purchases = purchaseUseCase.getPurchasesByUserEmail(userEmail);
             userDTO.setPurchases(purchases);
             return ResponseEntity.ok(userDTO);
         }

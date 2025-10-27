@@ -8,7 +8,7 @@ public class ProductFilterDTO {
     private Double maxCost;
     private String author;
     private String lineType;
-    private String sortBy; // "cost" or "date"
+    private String sortBy; // "cost", "name", or "pages"
     private String sortOrder; // "asc" or "desc"
 
     public String getName() { return name; }
